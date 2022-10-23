@@ -1,0 +1,72 @@
+Backup db procudure:
+=======================
+
+Create non sudo backup user 
+sudo useradd -m backup
+
+sudo passwd backup
+pass: Password1!
+
+As sudo create /opt/db/backup
+chown backup:backup backup
+
+In there create subfolders: mysqldump , scripts also accessible from backup user
+
+Info for backup user
+=====================
+# https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html
+'' mysqldump requires at least the SELECT privilege for dumped tables, SHOW VIEW for dumped views, TRIGGER for dumped triggers, LOCK TABLES if the --single-transaction option is not used, and (as of MySQL 8.0.21) PROCESS if the --no-tablespaces option is not used. Certain options might require other privileges as noted in the option descriptions.
+
+To reload a dump file, you must have the privileges required to execute the statements that it contains, such as the appropriate CREATE privileges for objects created by those statements. ''
+
+Connect to mysql and crete a backupuser acount
+(https://www.itsupportwale.com/blog/creating-a-backup-user-with-read-only-permission-for-mysql-db/)
+For the dev enviroment created user as follows (can backup any database):
+CREATE USER 'backupuser'@'localhost' IDENTIFIED BY 'password';
+SET PASSWORD FOR 'backupuser'@'localhost' = PASSWORD('password');
+GRANT Lock tables ON *.* TO 'backupuser'@'localhost';
+GRANT Select ON *.* TO 'backupuser'@'localhost';
+GRANT Show view ON *.* TO 'backupuser'@'localhost';
+GRANT PROCESS ON *.* TO backupuser@localhost;
+GRANT Usage ON *.* TO 'backupuser'@'localhost';
+GRANT Show databases ON *.* TO 'backupuser'@'localhost';
+GRANT Reload ON *.* TO 'backupuser'@'localhost';
+GRANT TRIGGER ON *.* TO 'backupuser'@'localhost';
+
+
+at home folder of backup user created .my.cnf file with following contents:
+[mysqldump]
+user = backupuser
+password = password
+
+Now change the file permission to 600 to prevent other user from reading it
+chmod 600 ~/.my.cnf
+
+
+Backup script
+=================
+-As backup user create script backupdb.sh at opt/db/backup/scrips (see backupdb.sh file)
+
+
+
+
+CRONJOB
+=========
+As backup user execute crontab -e to open editor for crontab for backup user and add the following line to execute backup script daily at 1 o clock:
+0 1 * * * /opt/db/backup/scripts/backupdb.sh >> /opt/db/backup/mysqldump/backup.log 2>&1
+
+
+
+RESTORE DATABASE
+================
+Note: zcat command only displays contents of gz file without extracting. Same as gunzip -c command.
+zcat dbname-2022-07-16_23-31.sql.gz | mysql -u 'restore' -p database
+
+Help: How to extract gz
+=====================
+To unzip created gzip file gzip -v -d -k file2.gz (-k  which is preserve org file not working on servers we have so be carefull!)
+
+
+
+
+
